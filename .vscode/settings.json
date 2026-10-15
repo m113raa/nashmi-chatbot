@@ -1,0 +1,10 @@
+{
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "terminal.integrated.env.windows": { "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1" },
+  "files.exclude": { "**/__pycache__": true },
+  "editor.unicodeHighlight.ambiguousCharacters": false,
+  "editor.unicodeHighlight.invisibleCharacters": false,
+  "[json]": { "editor.wordWrap": "on" },
+  "[markdown]": { "editor.wordWrap": "on" }
+}
