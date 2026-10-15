@@ -792,6 +792,8 @@ def fee_list_answer(question, r, pieces, db):
     if len(lines) < 3:
         return None  # one clear amount: let the model write a normal sentence
     cases = sum(1 for l in lines if any(re.search(p, norm(l)) for pats in FEE_TAGS.values() for p in pats))
+    if cases < 2:
+        return None  # lines that ADD UP (5 + pledge + collection), not alternative cases: normal answer, nothing dropped
     head = f"تختلف رسوم {s['title']} حسب الحالة:" if cases >= 2 else f"رسوم {s['title']}:"
     out = head + "\n" + "\n".join(f"- {l}" for l in lines)
     extra = [l.strip("- ").strip() for l in s["fields"].get("notes", "").split("\n") if "دينار" in l or "دنانير" in l]
