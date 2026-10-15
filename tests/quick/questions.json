@@ -1,0 +1,98 @@
+{
+  "chats": [
+    {
+      "chat_id": "hard-01",
+      "messages": [
+        {
+          "message_id": "hard-01-1",
+          "question": "عمري 17 وجوازي بايق عليه 3 شهور، كم رسوم التجديد؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-02",
+      "messages": [
+        {
+          "message_id": "hard-02-1",
+          "question": "جوازي لسا صالح لسنة كاملة وبدي أجدده، قديش؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-03",
+      "messages": [
+        {
+          "message_id": "hard-03-1",
+          "question": "ابني عمره 12 سنة بدي أجدد جوازه، كم الرسوم؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-04",
+      "messages": [
+        {
+          "message_id": "hard-04-1",
+          "question": "أنا عايش بألمانيا وبدي أطلع جواز سفر لأول مرة، كم الرسوم؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-12",
+      "messages": [
+        {
+          "message_id": "hard-12-1",
+          "question": "ضاعت هويتي للمرة الثالثة، شو بصير؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-16",
+      "messages": [
+        {
+          "message_id": "hard-16-1",
+          "question": "كم رسوم دفتر عائلة بدل فاقد؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-20",
+      "messages": [
+        {
+          "message_id": "hard-20-1",
+          "question": "أنا عسكري بالقوات المسلحة وبدي أجدد جوازي، كم؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-21",
+      "messages": [
+        {
+          "message_id": "hard-21-1",
+          "question": "بدي أجدد الجواز بالخدمة المستعجلة، قديش بزيد؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-22",
+      "messages": [
+        {
+          "message_id": "hard-22-1",
+          "question": "أنا وزوجتي عنا كذا معاملة: هويتي انكسرت، وجواز زوجتي ضاع لأول مرة، وابني عمره 5 سنين بدنا نطلعله جواز لأول مرة. كم رح ندفع لكل وحدة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "hard-28",
+      "messages": [
+        {
+          "message_id": "hard-28-1",
+          "question": "شو الأوراق المطلوبة لتجديد الجواز؟"
+        },
+        {
+          "message_id": "hard-28-2",
+          "question": "وكم بتكلف؟"
+        }
+      ]
+    }
+  ]
+}
