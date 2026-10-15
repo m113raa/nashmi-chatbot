@@ -9,7 +9,7 @@ It uses exactly the same engine as main.py (bot.Chat), and under every answer it
 which service and fields were retrieved, and the exact document pieces the model was given.
 Standard library only.
 """
-import argparse, json, mimetypes, os, threading, time, traceback, webbrowser
+import argparse, importlib, json, mimetypes, os, threading, time, traceback, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import bot
@@ -17,6 +17,20 @@ import bot
 ROOT = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(ROOT, "ui")
 DB = bot.load()
+BOT_MTIME = os.path.getmtime(bot.__file__)
+
+
+def fresh_bot():
+    """Reload bot.py automatically when it changes, so the UI never runs old code (no restart needed)."""
+    global DB, BOT_MTIME
+    m = os.path.getmtime(bot.__file__)
+    if m != BOT_MTIME:
+        with LOCK:
+            importlib.reload(bot)
+            DB = bot.load()
+            CHATS.clear()
+            BOT_MTIME = m
+        print(time.strftime("%H:%M:%S"), "bot.py changed -> reloaded")
 CHATS = {}                      # conversation_id -> bot.Chat (its own memory, like one chat in questions.json)
 LOCK = threading.Lock()
 STATE = {"model": "loading", "error": None, "name": ""}
@@ -98,6 +112,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"ok": True})
         if path != "/api/chat":
             return self.send_json({"error": "not found"}, 404)
+        fresh_bot()
         req = self.read_json()
         q = str(req.get("message", "")).strip()
         cid = str(req.get("conversation_id") or "default")
@@ -162,12 +177,18 @@ def main():
     a = ap.parse_args()
     mimetypes.add_type("application/javascript", ".js")
     mimetypes.add_type("text/css", ".css")
-    threading.Thread(target=warm_up, daemon=True).start()
     url = f"http://localhost:{a.port}"
     print(f"\n  Nashmi UI -> {url}   ({len(DB)} services loaded, Ctrl+C to stop)\n")
     if not a.no_browser:
         threading.Timer(1.0, lambda: webbrowser.open(url)).start()
-    ThreadingHTTPServer(("127.0.0.1", a.port), Handler).serve_forever()
+    try:
+        srv = ThreadingHTTPServer(("127.0.0.1", a.port), Handler)
+        threading.Thread(target=warm_up, daemon=True).start()
+    except OSError:
+        print(f"\n!! Port {a.port} is already in use: an OLD server.py is still running (the browser would talk to it).")
+        print("   Close the other terminal running server.py (Ctrl+C), or run:  python server.py --port 8001\n")
+        raise SystemExit(1)
+    srv.serve_forever()
 
 
 if __name__ == "__main__":

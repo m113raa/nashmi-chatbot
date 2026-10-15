@@ -135,7 +135,7 @@ SIT_WORDS = {  # order of checking = priority (lost/damaged beat renewal beat fi
     "renewal": ["تجديد", "بتتجدد", "تتجدد", "يتجدد", "اجدد", "بجدد", "يجدد", "نجدد", "جدد", "جددت", "خلص", "خلصت", "منتهي", "منتهيه", "انتهى",
                 "انتهت", "انتهاء", "صلاحيته", "باقي عليه", "بايق عليه", "ممتلي", "ممتلئ", "صالح", "ساري", "renew", "expired"],
     "first_issue": ["اول مره", "لاول مره", "لاول", "اول", "اصدار", "استخراج", "اطلع", "بطلع", "نطلع", "يطلع", "تطلع",
-                    "اعمل", "جديد", "ما عندي", "طلعت", "ما طلعت", "استخرجت", "فتح", "فتحت", "افتح", "تزوجت", "اتزوجت", "first"],
+                    "جديد", "ما عندي", "طلعت", "ما طلعت", "استخرجت", "فتح", "فتحت", "افتح", "تزوجت", "اتزوجت", "first"],
 }
 FIELD_WORDS = {
     "fees": ["رسوم", "قديش", "كم بكلف", "بكلف", "بتكلف", "تكلفه", "كلفه", "سعر", "بدفع", "ادفع", "ندفع", "دفع", "مصاري",
@@ -161,6 +161,14 @@ for _d in (DOC_WORDS, SIT_WORDS, FIELD_WORDS):
         _d[_k] = list(dict.fromkeys(norm(w) for w in _d[_k]))
 GENERAL[:] = [norm(w) for w in GENERAL]
 OUT_STRONG[:] = [norm(w) for w in OUT_STRONG]
+
+# words that only make sense for our services: a question with one of these but no document -> ask which document;
+# a question with none of them (and no document) is out of scope -> decline
+DOMAIN_HINTS = [norm(w) for w in (
+    "تجديد", "اجدد", "بجدد", "جدد", "نجدد", "يجدد", "بتتجدد", "فاقد", "فقدان", "ضاع", "ضايع", "ضاعت", "ضيعت", "فقدت",
+    "انسرق", "انسرقت", "تالف", "تلف", "تلفت", "خرب", "خربت", "انكسر", "انكسرت", "اهترى", "اهترت", "اصدار", "استخراج",
+    "بدل", "رسوم", "الرسوم", "اوراق", "الاوراق", "الوثائق", "وثائق", "المطلوب", "مطلوب", "بلزمني", "معامله", "المعامله",
+    "المعاملات", "الطلب", "اقدم", "الاحوال", "الجوازات", "شروط")]
 
 DECLINE = "عذراً، لا تتوفر لدي معلومات عن هذا الموضوع. أستطيع المساعدة فقط في خدمات جواز السفر ودفتر العائلة والبطاقة الذكية (لأول مرة، التجديد، بدل فاقد، بدل تالف)."
 
@@ -262,7 +270,7 @@ def route(question, memory):
             if all_sits and len(docs_before) == 1:  # "وإذا ضاع؟" -> same document, new situation
                 services = [f"{docs_before[0]}_{s}" for s in all_sits]
             return {"action": "answer", "services": services, "fields": fields or memory.get("fields") or [], "general": general}
-        if all_sits or fields:
+        if _has(qn, DOMAIN_HINTS):
             return {"action": "clarify", "services": [], "fields": fields,
                     "message": "ممكن توضح عن أي وثيقة بتسأل؟ جواز السفر، دفتر العائلة، أو البطاقة الذكية (الهوية)؟"}
         return {"action": "decline", "services": [], "fields": [], "message": DECLINE}
@@ -719,14 +727,47 @@ def filter_fees(fee_text, profile):
     return "\n".join(keep + [l for l, _ in plain])
 
 
-def generate(question, pieces, history):
+LIST_ALL = ("تعليمات إضافية: السائل لم يذكر تفاصيل تحدد حالته، فاذكر كل حالات الرسوم كما هي مكتوبة في النص حرفياً، "
+            "كل حالة بسطر يبدأ بشرطة، مع المبلغ والوصف كما هو تماماً، ولا تضف أي شرط أو عمر أو حالة غير مكتوبة.")
+
+
+def generate_meta(r):
+    """Decline / clarify / greet, still written by the model (the rules: every answer comes from the provided model).
+    The user's off-topic text is NOT sent, so the model can't answer it from its own memory."""
+    if r.get("greet"):
+        task = "رحّب بالمستخدم بجملة قصيرة، وقل إنك تساعد في خدمات جواز السفر ودفتر العائلة والبطاقة الذكية (لأول مرة، التجديد، بدل فاقد، بدل تالف)، واسأله عن سؤاله."
+    elif r["action"] == "decline":
+        task = ("سؤال المستخدم خارج نطاق الوثائق المتوفرة لديك. اكتب جملتين فقط بالعربية الفصحى:\n"
+                "1) ابدأ بكلمة «عذراً» وقل إنه لا تتوفر لديك معلومات عن هذا الموضوع.\n"
+                "2) قل إنك تستطيع المساعدة فقط في خدمات: جواز السفر، دفتر العائلة، البطاقة الذكية "
+                "(لأول مرة، التجديد، بدل فاقد، بدل تالف).\n"
+                "لا تذكر أي رقم أو سعر أو معلومة أخرى.")
+    else:
+        task = ("المستخدم لم يحدد ما يكفي. اسأله سؤالاً توضيحياً واحداً قصيراً بالعربية بهذا المعنى، دون إضافة أي معلومة: "
+                + r.get("message", "عن أي وثيقة تسأل: جواز السفر، دفتر العائلة، أم البطاقة الذكية؟"))
+    try:
+        out = llm([{"role": "system", "content": "أنت مساعد دائرة الأحوال المدنية والجوازات في الأردن. أجب بالعربية فقط وباختصار."},
+                   {"role": "user", "content": task}]).strip()
+    except Exception:
+        return r.get("message", DECLINE)
+    if r["action"] == "decline" and not r.get("greet"):
+        # the decline must: start with عذراً, name the 3 services, contain no number/price
+        if not norm(out).startswith(norm("عذرا")):
+            out = "عذراً، " + out
+        if re.search(r"\d|دينار|دنانير", out) or not all(w in norm(out) for w in (norm("جواز"), norm("دفتر"), norm("البطاقه"))):
+            out = DECLINE
+    return out or r.get("message", DECLINE)
+
+
+def generate(question, pieces, history, extra=""):
     ctx = "\n\n".join(f"[{i+1}] {p}" for i, p in enumerate(pieces))
     msgs = [{"role": "system", "content": SYSTEM}]
     for h in history[-2:]:  # last exchange(s) of THIS chat only, so follow-ups read naturally
         msgs += [{"role": "user", "content": h["q"]}, {"role": "assistant", "content": h["a"]}]
     facts = situation_facts(question, "\n".join(pieces)) if any(("الرسوم" in p or "شروط" in p) for p in pieces) else []
     ftxt = ("\n\nحقائق عن حالة السائل (محسوبة من سؤاله):\n- " + "\n- ".join(facts)) if facts else ""
-    msgs.append({"role": "user", "content": f"النصوص الرسمية:\n{ctx}{ftxt}\n\nسؤال المواطن: {question}"})
+    xtxt = f"\n\n{extra}" if extra else ""
+    msgs.append({"role": "user", "content": f"النصوص الرسمية:\n{ctx}{ftxt}{xtxt}\n\nسؤال المواطن: {question}"})
     return strip_totals(llm(msgs))
 
 
@@ -776,19 +817,19 @@ class Chat:
             self.pending = None
         r = route(question, self.memory)
         if r["action"] in ("decline", "clarify"):
-            ans, ctx = r["message"], []
+            ans, ctx = generate_meta(r), []
             if r["action"] == "clarify" and not r.get("greet"):
                 self.pending = question[-300:]
         else:
             r["profile"] = chat_profile(question, [h["q"] for h in self.history])
             pieces, clar = select(question, r, self.db)
             if clar:
-                ans, ctx = clar, []
+                ans, ctx = generate_meta({"action": "clarify", "message": clar}), []
                 self.pending = question[-300:]
             else:
                 listed = fee_list_answer(question, r, pieces, self.db)
                 try:
-                    ans = listed or generate(question, pieces, self.history)
+                    ans = generate(question, pieces, self.history, LIST_ALL if listed else "")
                 except Exception as e:  # Ollama down / timeout: fall back to the exact text (still grounded)
                     print(f"   !! model error: {e} -> extractive answer")
                     ans = "\n".join(p.split(": ", 1)[-1] for p in pieces)
