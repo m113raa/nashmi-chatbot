@@ -7,13 +7,21 @@ Answers citizens' questions about Jordan's **passport, family book and smart ID*
 
 ```
 ollama pull command-r7b-arabic
+ollama pull bge-m3          # optional: semantic ranking (falls back to keywords if missing)
 python main.py questions.json        # writes answers.json next to questions.json
 ```
 
-- Pure Python standard library: **no pip install, no virtual environment.**
+- Pure Python standard library: **no pip install needed.** `pip install chromadb` is optional: if present, it's used as the vector store; if not, the built-in fallback gives the same results.
 - Ollama is called over HTTP at `http://localhost:11434`.
 - The model defaults to `command-r7b-arabic`. To use another one, set `LLM_MODEL`.
 - If Ollama is unreachable, every answer falls back to the exact document text, so `answers.json` is always written.
+
+## Demo UI (optional)
+
+```
+python server.py      # opens http://localhost:8000
+```
+The same engine as `main.py`. Under every answer it shows the retrieval decision (service and fields) and the exact document pieces the model was given.
 
 ## Files
 
@@ -22,6 +30,7 @@ python main.py questions.json        # writes answers.json next to questions.jso
 | `main.py` | Entry point. Reads the questions and writes `answers.json`. Gives every chat its own memory, catches errors per message, and saves after every chat |
 | `bot.py` | Parsing, routing, situation facts, prompt and the Ollama call |
 | `data/` | The 12 service files |
+| `server.py` + `ui/` | The demo chat UI (optional; not used by the evaluation) |
 | `test_route.py` | Shows which service and fields each question is routed to, with no model needed |
 | `tests/hard/questions.json` | Our own 28-chat test set, covering every question type in the brief |
 | `tests/quick/questions.json` | A 7-chat subset for fast checks |
@@ -45,6 +54,8 @@ It also handles:
 - **Comparisons**
 - **Follow-ups:** a memory per chat, so "وكم بتكلف؟" or "وإذا ضاع؟" refer to the earlier question.
 - **Hidden rules:** ملاحظات is always attached to fee, condition and timing questions, because extra charges and deadlines hide there.
+
+**2b. Embeddings (hybrid retrieval).** `bge-m3` embeds the 108 pieces once. The vectors are stored in **ChromaDB** (`index/chroma/`, cosine distance, filtered by service). If `chromadb` isn't installed, they come from the JSON cache `index/embeddings.json` with cosine similarity in plain Python, so the program never depends on it. **The rules pick the service**, because embeddings can't tell the near-identical twin files apart. **The embeddings rank the fields inside that service** when the question's wording doesn't match our keywords. If `bge-m3` isn't installed, this layer switches off by itself and word overlap is used. Check it with `python bot.py`; turn it off with `USE_EMBEDDINGS=0`.
 
 **3. The code applies the fee rules.** Many fees depend on the person, and in our tests the 7B model picked a different fee case whenever the prompt changed slightly. So every fee line is tagged with its condition (military, under/over 16, less/more than 180 days left, abroad, full pages, 1st/2nd loss, expired/not expired). The code reads the person's situation from the whole chat and sends **only the matching fee line** to the model and into `contexts`. If the person gave no details, every line goes, so the answer lists the cases. The code also gives the model plain facts:
 - age vs. 16 and 18

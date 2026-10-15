@@ -10,7 +10,7 @@ Pipeline for one message:
   4. generate()  send only those pieces to the Ollama model with a strict "answer only from this" prompt
 Only Python's standard library is used (Ollama is called over HTTP), so there is nothing to pip install.
 """
-import glob, json, os, re, unicodedata, urllib.request
+import glob, hashlib, json, math, os, re, unicodedata, urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT, "data")
@@ -19,6 +19,9 @@ LLM_MODEL = os.getenv("LLM_MODEL", "")          # empty = PREFERRED if installed
 PREFERRED = "command-r7b-arabic"
 NUM_CTX = int(os.getenv("NUM_CTX", "8192"))     # set explicitly: Ollama's default window silently cuts text
 NUM_PREDICT = int(os.getenv("NUM_PREDICT", "500"))
+EMB_MODEL = os.getenv("EMB_MODEL", "bge-m3")          # embedding model (semantic search inside the routed service)
+USE_EMBEDDINGS = os.getenv("USE_EMBEDDINGS", "1") == "1"
+EMB_CACHE = os.path.join(ROOT, "index", "embeddings.json")
 
 # ------------------------------------------------------------------ 1. Arabic normalization
 _DIAC = re.compile(r"[ؐ-ًؚ-ٰٟۖ-ۭـ]")
@@ -102,10 +105,13 @@ def parse_service(path):
 
 
 def load(data_dir=DATA_DIR):
+    """Parse the 12 files; also builds (or loads from cache) the bge-m3 vectors of the 108 pieces."""
     services = {}
     for p in sorted(glob.glob(os.path.join(data_dir, "*.txt"))):
         s = parse_service(p)
         services[s["key"]] = s
+    if _EMB["ok"] is None:
+        build_vectors(services)
     return services
 
 
@@ -122,11 +128,11 @@ DOC_WORDS = {
                 "بطاقه شخصيه", "بطاقه احوال", "بطاقتي", "البطاقه", "بطاقه", "الذكيه", "id card", "smart id"],
 }
 SIT_WORDS = {  # order of checking = priority (lost/damaged beat renewal beat first issue)
-    "lost": ["فاقد", "فقدان", "مفقود", "فقدت", "فقد", "ضاع", "ضايع", "ضايعه", "ضاعت", "ضيعت", "ضيعته", "ضيعتها",
+    "lost": ["فاقد", "فقدان", "ضياع", "مفقود", "فقدت", "فقد", "ضاع", "ضايع", "ضايعه", "ضاعت", "ضيعت", "ضيعته", "ضيعتها",
              "انسرق", "انسرقت", "سرق", "سرقت", "انسرقلي", "lost", "stolen"],
     "damaged": ["تالف", "تلف", "تلفت", "تالفه", "خرب", "خربان", "خربت", "خربانه", "انكسر", "انكسرت", "مكسور", "مقطوع",
                 "انقطع", "انقطعت", "تمزق", "ممزق", "اهترى", "اهتري", "اهترت", "مهتري", "مهتريه", "ما عاد تنقرا", "مش واضحه", "تبهدل", "مبلول", "انبل", "انغسل", "damaged"],
-    "renewal": ["تجديد", "اجدد", "بجدد", "يجدد", "نجدد", "جدد", "جددت", "خلص", "خلصت", "منتهي", "منتهيه", "انتهى",
+    "renewal": ["تجديد", "بتتجدد", "تتجدد", "يتجدد", "اجدد", "بجدد", "يجدد", "نجدد", "جدد", "جددت", "خلص", "خلصت", "منتهي", "منتهيه", "انتهى",
                 "انتهت", "انتهاء", "صلاحيته", "باقي عليه", "بايق عليه", "ممتلي", "ممتلئ", "صالح", "ساري", "renew", "expired"],
     "first_issue": ["اول مره", "لاول مره", "لاول", "اول", "اصدار", "استخراج", "اطلع", "بطلع", "نطلع", "يطلع", "تطلع",
                     "اعمل", "جديد", "ما عندي", "طلعت", "ما طلعت", "استخرجت", "فتح", "فتحت", "افتح", "تزوجت", "اتزوجت", "first"],
@@ -135,10 +141,10 @@ FIELD_WORDS = {
     "fees": ["رسوم", "قديش", "كم بكلف", "بكلف", "بتكلف", "تكلفه", "كلفه", "سعر", "بدفع", "ادفع", "ندفع", "دفع", "مصاري",
              "فلوس", "دينار", "غرامه", "اغلى", "ارخص", "كفاله", "تعهد", "cost", "fee", "price"],
     "documents": ["اوراق", "الاوراق", "ورق", "وثائق", "الوثائق", "مستندات", "بلزم", "يلزم", "بلزمني", "المطلوب", "مطلوب",
-                  "اجيب", "احضر", "صوره", "صور", "documents"],
+                  "اجيب", "احضر", "صوره", "صور", "فحص", "زمره الدم", "documents"],
     "conditions": ["شروط", "مين بقدر", "مين يحق", "يحق", "بقدر", "بيقدر", "موافقه", "حضور", "شخصيا", "الزوجه",
                    "زوجته", "مرتي", "ولي الامر", "القاصر", "قاصر", "ابني", "بنتي", "اولادي", "توكيل", "تفويض"],
-    "time": ["يستغرق", "مده", "وقت", "بوخذ", "بياخد", "بتاخد", "بياخذ", "دقيقه", "ساعه", "متى بطلع", "قديش بطول", "بستلم", "استلم", "تستلم", "جاهز", "how long"],
+    "time": ["يستغرق", "مده", "وقت", "اسرع", "ابطا", "اطول", "بوخذ", "بياخد", "بتاخد", "بياخذ", "دقيقه", "ساعه", "متى بطلع", "قديش بطول", "بستلم", "استلم", "تستلم", "جاهز", "how long"],
     "places": ["وين", "اين", "مكان", "اماكن", "سفاره", "السفاره", "قنصليه", "القنصليه", "برا", "الخارج", "خارج", "مكتب", "where"],
     "procedure": ["اجراءات", "خطوات", "طريقه", "مراحل", "كيف", "procedure", "steps"],
     "notes": ["ملاحظات", "رب الاسره", "توفي", "وفاه", "اسبوعين", "خلال", "مهله"],
@@ -148,7 +154,7 @@ FIELD_WORDS = {
 GENERAL = ["شو بعمل", "شو اعمل", "شو لازم", "كيف بعمل", "شو الحل", "ساعدني", "شو بصير"]
 # Services that sound related but are NOT in the data -> always decline
 OUT_STRONG = ["دبلوماسي", "رخصه", "سواقه", "قياده", "فيزا", "تاشيره", "تذكره", "طيران", "عدم محكوميه", "شهاده ميلاد",
-              "شهاده وفاه", "تصديق", "جامعيه", "اقامه عمل", "تصريح عمل", "جنسيه اردنيه لابناء"]
+              "شهاده وفاه", "تصديق", "جامعيه", "وثيقه سفر مؤقته", "مؤقته", "ساعات الدوام", "الدوام", "دوام", "اقامه عمل", "تصريح عمل", "جنسيه اردنيه لابناء"]
 
 for _d in (DOC_WORDS, SIT_WORDS, FIELD_WORDS):
     for _k in _d:
@@ -191,6 +197,11 @@ def _find_fields(qn):
     strong_fee = [w for w in FIELD_WORDS["fees"] if w not in (norm("قديش"),)]
     if "fees" in f and "documents" in f and not _has(qn, strong_fee):
         f.remove("fees")         # "قديش صورة بحتاج" asks how many photos, not the price
+    if "fees" in f and "time" in f and not _has(qn, strong_fee):
+        f.remove("fees")         # "قديش بتاخد المعاملة؟" asks how LONG
+    deadline = [norm(w) for w in ("خلال قديش", "خلال كم", "خلال اديش", "قديش مهله", "كم المهله", "المهله", "مهله")]
+    if _has(qn, deadline):
+        f = [x for x in f if x not in ("fees", "time")] + ["notes"]   # renewal/report deadlines live in the notes
     weak_cond = [norm(w) for w in ("بقدر", "بيقدر")]
     strong_cond = [w for w in FIELD_WORDS["conditions"] if w not in weak_cond]
     if "conditions" in f and len(f) > 1 and not _has(qn, strong_cond):
@@ -220,9 +231,9 @@ def route(question, memory):
     qn = norm(question)
     if len(qn.split()) <= 4 and not _find_docs(qn) and not _find_sits(qn):
         if _has(qn, THANKS):
-            return {"action": "clarify", "services": [], "fields": [], "message": "العفو! إذا عندك أي سؤال ثاني عن جواز السفر أو دفتر العائلة أو البطاقة الذكية أنا جاهز."}
+            return {"action": "clarify", "greet": True, "services": [], "fields": [], "message": "العفو! إذا عندك أي سؤال ثاني عن جواز السفر أو دفتر العائلة أو البطاقة الذكية أنا جاهز."}
         if _has(qn, GREET):
-            return {"action": "clarify", "services": [], "fields": [], "message": "أهلاً وسهلاً! أنا مساعد دائرة الأحوال المدنية والجوازات. بقدر أساعدك بخدمات جواز السفر ودفتر العائلة والبطاقة الذكية: لأول مرة، التجديد، بدل فاقد، وبدل تالف. شو سؤالك؟"}
+            return {"action": "clarify", "greet": True, "services": [], "fields": [], "message": "أهلاً وسهلاً! أنا مساعد دائرة الأحوال المدنية والجوازات. بقدر أساعدك بخدمات جواز السفر ودفتر العائلة والبطاقة الذكية: لأول مرة، التجديد، بدل فاقد، وبدل تالف. شو سؤالك؟"}
     if _has(qn, OUT_STRONG):
         return {"action": "decline", "services": [], "fields": [], "message": DECLINE}
 
@@ -256,6 +267,8 @@ def route(question, memory):
                     "message": "ممكن توضح عن أي وثيقة بتسأل؟ جواز السفر، دفتر العائلة، أو البطاقة الذكية (الهوية)؟"}
         return {"action": "decline", "services": [], "fields": [], "message": DECLINE}
 
+    if len({d for d, _ in pairs}) == 1 and all_sits:  # one document: the situation can be anywhere in the message
+        pairs = [(d, sits or all_sits) for d, sits in pairs]
     services, unclear_docs = [], []
     for d, sits in pairs:
         sits = sits or (memory.get("sits", {}).get(d, []))
@@ -284,8 +297,129 @@ def _tokens(t):
     return out
 
 
+# ------------------------------------------------------------------ 4b. Embeddings (bge-m3): semantic ranking of fields
+# The rules choose the SERVICE (embeddings can't tell the near-identical twin files apart); inside that service the
+# embeddings rank the 9 fields when the wording doesn't match our keywords. Vector store = 108 vectors in a JSON cache,
+# cosine similarity in plain Python. If bge-m3 is missing the whole layer switches off and word overlap is used.
+_EMB = {"ok": None, "vecs": {}, "q": {}, "chroma": None}
+CHROMA_DIR = os.path.join(ROOT, "index", "chroma")
+USE_CHROMA = os.getenv("USE_CHROMA", "1") == "1"
+
+
+def chroma_store(keys, vecs, texts):
+    """Put the vectors in a persistent ChromaDB collection (offline: no telemetry, no default embedding model -
+    we pass our own bge-m3 vectors). Returns None if chromadb isn't installed or fails; the JSON cache is used then."""
+    if not USE_CHROMA:
+        return None
+    try:
+        import chromadb
+        from chromadb.config import Settings
+        client = chromadb.PersistentClient(path=CHROMA_DIR, settings=Settings(anonymized_telemetry=False))
+        try:
+            client.delete_collection("nashmi_pieces")  # 108 items: rebuilding is instant and never stale
+        except Exception:
+            pass
+        col = client.create_collection("nashmi_pieces", embedding_function=None, metadata={"hnsw:space": "cosine"})
+        col.add(ids=keys, embeddings=vecs, documents=texts,
+                metadatas=[{"service": k.split("|")[0], "field": k.split("|")[1]} for k in keys])
+        print(f"vector store: ChromaDB ({col.count()} vectors, {CHROMA_DIR})")
+        return col
+    except Exception as e:
+        print(f"vector store: JSON cache (chromadb not available: {type(e).__name__})")
+        return None
+
+
+def chroma_rank(qv, service_key, k):
+    """Nearest fields of one service, through ChromaDB (metadata filter + cosine distance)."""
+    col = _EMB["chroma"]
+    res = col.query(query_embeddings=[qv], n_results=min(9, max(k, 1) + 7), where={"service": service_key})
+    return [(1 - d, m["field"]) for d, m in zip(res["distances"][0], res["metadatas"][0])]
+
+
+def _unit(v):
+    n = math.sqrt(sum(x * x for x in v)) or 1.0
+    return [x / n for x in v]
+
+
+def embed(texts):
+    body = json.dumps({"model": EMB_MODEL, "input": texts, "keep_alive": "60m"}).encode("utf-8")
+    req = urllib.request.Request(f"{OLLAMA_URL}/api/embed", data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=120) as r:
+        return [_unit(v) for v in json.load(r)["embeddings"]]
+
+
+def build_vectors(services_db):
+    """Embed every 'service - field: text' piece once; cached on disk and rebuilt only if the data changes."""
+    if not USE_EMBEDDINGS:
+        _EMB["ok"] = False
+        return False
+    keys, texts = [], []
+    for k, s in services_db.items():
+        for f in s["fields"]:
+            keys.append(f"{k}|{f}")
+            texts.append(piece(s, f))
+    digest = hashlib.sha1((EMB_MODEL + "\n".join(texts)).encode("utf-8")).hexdigest()
+    try:
+        with open(EMB_CACHE, encoding="utf-8") as fh:
+            cache = json.load(fh)
+        if cache.get("digest") == digest:
+            _EMB["vecs"], _EMB["ok"] = dict(zip(cache["keys"], cache["vectors"])), True
+            _EMB["chroma"] = chroma_store(cache["keys"], cache["vectors"], texts)
+            return True
+    except Exception:
+        pass
+    try:
+        vecs = []
+        for i in range(0, len(texts), 16):
+            vecs += embed(texts[i:i + 16])
+        _EMB["vecs"], _EMB["ok"] = dict(zip(keys, vecs)), True
+        os.makedirs(os.path.dirname(EMB_CACHE), exist_ok=True)
+        with open(EMB_CACHE, "w", encoding="utf-8") as fh:
+            json.dump({"model": EMB_MODEL, "digest": digest, "keys": keys,
+                       "vectors": [[round(x, 5) for x in v] for v in vecs]}, fh)
+        print(f"embeddings: {len(vecs)} pieces indexed with {EMB_MODEL}")
+        _EMB["chroma"] = chroma_store(keys, vecs, texts)
+        return True
+    except Exception as e:
+        print(f"embeddings off ({EMB_MODEL} not available: {e}) -> keyword ranking only")
+        _EMB["ok"] = False
+        return False
+
+
+def _qvec(question):
+    if question not in _EMB["q"]:
+        _EMB["q"][question] = embed([question])[0]
+    return _EMB["q"][question]
+
+
+def semantic_fields(question, service, k=2):
+    """Rank the fields of ONE service by cosine similarity to the question (+ a small word-overlap bonus)."""
+    if not _EMB["ok"]:
+        return None
+    try:
+        qv = _qvec(question)
+    except Exception:
+        return None
+    q = _tokens(question)
+    sims = None
+    if _EMB["chroma"] is not None:
+        try:
+            sims = chroma_rank(qv, service["key"], k)
+        except Exception:
+            sims = None
+    if sims is None:  # plain cosine over the cached vectors
+        sims = [(sum(a * b for a, b in zip(qv, v)), f) for f in service["fields"]
+                for v in [_EMB["vecs"].get(f"{service['key']}|{f}")] if v is not None]
+    scored = sorted(((sim + 0.02 * len(q & _tokens(service["fields"].get(f, ""))), f) for sim, f in sims), reverse=True)
+    return [f for _, f in scored[:k]] or None
+
+
 def best_fields(question, service, k=2):
-    """No field keyword in the question: score the 9 fields of the service by word overlap."""
+    """No field keyword in the question: semantic ranking (bge-m3) if available, else word overlap."""
+    sem = semantic_fields(question, service, k)
+    if sem:
+        LAST["semantic"] = True
+        return sem
     q = _tokens(question)
     scored = []
     for f, txt in service["fields"].items():
@@ -294,7 +428,11 @@ def best_fields(question, service, k=2):
     return [f for s, f in scored[:k] if s > 0]
 
 
+LAST = {"semantic": False}
+
+
 STRICT_FIELDS = {"fees", "documents", "conditions", "procedure"}
+RECEIVE = [norm(w) for w in ("بستلم", "استلم", "تستلم", "نستلم", "اخذها", "جاهز", "جاهزه", "تصرف", "بتطلع", "متى بطلع")]
 URGENT = [norm(w) for w in ("مستعجل", "مستعجله", "المستعجله", "الخدمه المستعجله", "بسرعه", "عاجل")]
 
 
@@ -355,10 +493,13 @@ def select(question, r, services_db):
             if f in s["fields"]:
                 if f == "notes" and norm(s["fields"][f]) in ("لا يوجد", ""):
                     continue
+                if f == "time" and _has(norm(question), RECEIVE) and re.search(r"اسبوع|بعد \w+ من تاريخ", norm(s["fields"].get("notes", ""))):
+                    continue  # the notes hold the real waiting period (e.g. two weeks after the police report)
                 p = piece(s, f)
                 if f == "fees" and _has(norm(question), URGENT) and "مستعجل" in norm(s["fields"].get("notes", "")):
                     p = piece(s, "notes")  # "قديش بزيد المستعجل؟" -> the note "يضاف 25 دينار" is the answer
-                if f == "fees" and r.get("profile") and not _has(norm(question), URGENT):
+                compare = _has(norm(question), [norm(w) for w in ("الفرق", "مقارنه", "اغلى", "ارخص", "ايهما", "ايش الفرق", "شو الفرق")])
+                if f == "fees" and r.get("profile") and not _has(norm(question), URGENT) and not compare:
                     p = f"{s['title']} - {FIELD_LABEL['fees']}: {filter_fees(s['fields']['fees'], r['profile'])}"
                 if p not in pieces:
                     pieces.append(p)
@@ -488,6 +629,10 @@ FEE_TAGS = {
 NOT_EXPIRED = [norm(w) for w in ("مش منتهي", "غير منتهي", "مو منتهي", "ما خلص", "ما انتهى", "لسا صالح", "لسا ساري", "ساري المفعول", "مش خالص")]
 
 
+JO_PLACES = [norm(c) for c in ("عمان", "الاردن", "اربد", "الزرقاء", "العقبه", "السلط", "الكرك", "مادبا", "جرش", "عجلون",
+                                 "المفرق", "الطفيله", "معان", "البلقاء", "الرصيفه", "البلد", "الاغوار", "الرمثا")]
+
+
 def person_profile(text):
     """True / False / None (unknown) for every fee condition, from what the user wrote."""
     q = norm(text)
@@ -499,8 +644,9 @@ def person_profile(text):
     p["over16"] = None if age is None else age > 16
     p["military"] = _has(q, [norm(w) for w in ("عسكري", "القوات المسلحه", "الجيش", "جيش", "الامن العام", "الدفاع المدني", "الدرك", "حفظ السلام")])
     p["full"] = _has(q, [norm(w) for w in ("ممتلي", "ممتلئ", "امتلا", "مليان", "الصفحات", "صفحات")])
-    p["abroad"] = bool(_has(q, [norm(w) for w in ("برا", "بره", "بالخارج", "خارج الاردن", "خارج البلد", "مغترب")]) or
-                       re.search(r"(عايش|ساكن|مقيم)\s+ب\w+", q))
+    lives = re.search(r"(عايش|ساكن|مقيم)\s+(ب\w+)", q)
+    lives_abroad = bool(lives) and not any(lives.group(2).endswith(c) for c in JO_PLACES)
+    p["abroad"] = bool(_has(q, [norm(w) for w in ("برا", "بره", "بالخارج", "خارج الاردن", "خارج البلد", "مغترب")]) or lives_abroad)
     # "inside" only counts when SAID; otherwise it is unknown (so it can't tie with a stated fact like the age)
     p["inside"] = False if p["abroad"] else (True if _has(q, [norm(w) for w in ("داخل الاردن", "داخل البلد", "بالاردن", "جوا البلد")]) else None)
     days, expired = None, None
@@ -561,6 +707,11 @@ def filter_fees(fee_text, profile):
         if any(v is False for v in vals):
             continue
         scored.append((sum(1 for v in vals if v), l))
+    for strong in ("abroad", "military"):  # these decide the fee on their own
+        if profile.get(strong):
+            only = [l for l, tags in tagged if strong in tags]
+            if only:
+                return "\n".join(only + [l for l, _ in plain])
     best = max((sc for sc, _ in scored), default=0)
     if best == 0:
         return fee_text
@@ -614,17 +765,26 @@ class Chat:
         self.db = services_db
         self.memory = {"services": [], "fields": [], "sits": {}}
         self.history = []
+        self.pending = None  # the question we asked a clarification about
 
     def ask(self, question):
         """Returns (answer, contexts, debug_route)."""
+        LAST["semantic"] = False
+        asked = question
+        if self.pending:  # "كم رسوم الجواز؟" -> "أي خدمة؟" -> "تجديد": answer the combined question
+            question = f"{self.pending} {question}"
+            self.pending = None
         r = route(question, self.memory)
         if r["action"] in ("decline", "clarify"):
             ans, ctx = r["message"], []
+            if r["action"] == "clarify" and not r.get("greet"):
+                self.pending = question[-300:]
         else:
             r["profile"] = chat_profile(question, [h["q"] for h in self.history])
             pieces, clar = select(question, r, self.db)
             if clar:
                 ans, ctx = clar, []
+                self.pending = question[-300:]
             else:
                 listed = fee_list_answer(question, r, pieces, self.db)
                 try:
@@ -638,5 +798,17 @@ class Chat:
                 for k in self.memory["services"]:
                     d = next(x for x in DOC_NAMES if k.startswith(x))
                     self.memory["sits"][d] = [k[len(d) + 1:]]
-        self.history.append({"q": question, "a": ans})
+        self.history.append({"q": asked, "a": ans})
+        r["clarified"] = bool(self.pending)
+        r["semantic"] = LAST["semantic"]
         return ans, ctx, r
+
+
+if __name__ == "__main__":  # python bot.py  -> check the embeddings layer on this machine
+    db = load()
+    print("services:", len(db), "| embeddings:", ("ON (" + EMB_MODEL + ", " + str(len(_EMB["vecs"])) + " vectors, store: " +
+          ("ChromaDB" if _EMB["chroma"] is not None else "JSON cache") + ")") if _EMB["ok"] else "OFF")
+    if _EMB["ok"]:
+        for q, k in (("انسرقت محفظتي وفيها الهوية، شو بصير؟", "id_card_lost"), ("إذا مات أبوي وأمي مين بصير المسؤول عن العيلة؟", "family_book_renewal"),
+                     ("مين لازم يروح يقدم على جواز ابني؟", "passport_first_issue")):
+            print(" ", q, "->", semantic_fields(q, db[k], 3))

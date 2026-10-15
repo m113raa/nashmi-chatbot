@@ -2,5 +2,7 @@ __pycache__/
 *.pyc
 *.tmp
 answers.json
+compare_report.html
 .venv/
 venv/
+index/chroma/

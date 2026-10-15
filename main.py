@@ -12,6 +12,12 @@ import bot
 
 
 def main():
+    # Arabic progress lines must never crash the run (e.g. Windows console or output redirected to a file)
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     in_path = sys.argv[1] if len(sys.argv) > 1 else "questions.json"
     out_path = os.path.join(os.path.dirname(os.path.abspath(in_path)), "answers.json")
     with open(in_path, encoding="utf-8-sig") as f:

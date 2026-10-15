@@ -1,0 +1,389 @@
+{
+  "chats": [
+    {
+      "chat_id": "new-01",
+      "messages": [
+        {
+          "message_id": "new-01-1",
+          "question": "قديش بتاخد معاملة جواز السفر بدل التالف؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-02",
+      "messages": [
+        {
+          "message_id": "new-02-1",
+          "question": "كم دقيقة بدها تجديد البطاقة الذكية؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-03",
+      "messages": [
+        {
+          "message_id": "new-03-1",
+          "question": "وين بقدر أطلع هوية لأول مرة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-04",
+      "messages": [
+        {
+          "message_id": "new-04-1",
+          "question": "كم رسوم البطاقة الذكية بدل تالف؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-05",
+      "messages": [
+        {
+          "message_id": "new-05-1",
+          "question": "عمري 14 وبدي أطلع جواز أول مرة، كم بدفع؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-06",
+      "messages": [
+        {
+          "message_id": "new-06-1",
+          "question": "أنا بالأردن وعمري 30 وبدي جواز لأول مرة، قديش؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-07",
+      "messages": [
+        {
+          "message_id": "new-07-1",
+          "question": "ساكن بالسعودية وجوازي خلص، قديش التجديد؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-08",
+      "messages": [
+        {
+          "message_id": "new-08-1",
+          "question": "جوازي صفحاته خلصت بس لسا ساري، قديش بكلف التجديد؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-09",
+      "messages": [
+        {
+          "message_id": "new-09-1",
+          "question": "دفتر العيلة ضاع تاني مرة خلال سنة، قديش بدي أدفع؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-10",
+      "messages": [
+        {
+          "message_id": "new-10-1",
+          "question": "ضاعت هويتي لأول مرة، قديش الرسوم؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-11",
+      "messages": [
+        {
+          "message_id": "new-11-1",
+          "question": "صار عمري 18 ونص وما طلعت هوية، في غرامة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-12",
+      "messages": [
+        {
+          "message_id": "new-12-1",
+          "question": "ضاع جوازي وأنا برا الأردن، شو لازم أجيب؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-13",
+      "messages": [
+        {
+          "message_id": "new-13-1",
+          "question": "شو الأوراق المطلوبة لهوية بدل فاقد؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-14",
+      "messages": [
+        {
+          "message_id": "new-14-1",
+          "question": "شو بدي أجيب معي عشان أطلع دفتر عائلة أول مرة بعد الزواج؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-15",
+      "messages": [
+        {
+          "message_id": "new-15-1",
+          "question": "كم صورة بدي لجواز بدل تالف؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-16",
+      "messages": [
+        {
+          "message_id": "new-16-1",
+          "question": "لازم فحص دم عشان الهوية أول مرة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-17",
+      "messages": [
+        {
+          "message_id": "new-17-1",
+          "question": "بعد ما بلغت عن ضياع الهوية، متى بقدر أستلم الجديدة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-18",
+      "messages": [
+        {
+          "message_id": "new-18-1",
+          "question": "إذا خلص دفتر العائلة، خلال قديش لازم أجدده؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-19",
+      "messages": [
+        {
+          "message_id": "new-19-1",
+          "question": "إذا تغيرت بيانات دفتر العائلة، خلال كم يوم لازم أبلغ؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-20",
+      "messages": [
+        {
+          "message_id": "new-20-1",
+          "question": "ضيعت جوازي للمرة التالتة وآخر مرة كانت قبل سنتين، كم بدفع؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-21",
+      "messages": [
+        {
+          "message_id": "new-21-1",
+          "question": "إذا الجواز تلف عن قصد شو بصير؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-22",
+      "messages": [
+        {
+          "message_id": "new-22-1",
+          "question": "دفتر العائلة تلف، بدفع قيمة التعهد القديم؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-23",
+      "messages": [
+        {
+          "message_id": "new-23-1",
+          "question": "أيهما أرخص، هوية بدل فاقد ولا بدل تالف؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-24",
+      "messages": [
+        {
+          "message_id": "new-24-1",
+          "question": "شو الفرق بالرسوم بين تجديد دفتر العائلة المنتهي وغير المنتهي؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-25",
+      "messages": [
+        {
+          "message_id": "new-25-1",
+          "question": "أي أسرع: تجديد الهوية ولا تجديد الجواز؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-26",
+      "messages": [
+        {
+          "message_id": "new-26-1",
+          "question": "الباسبور تبعي انقطع، شو بلزمني؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-27",
+      "messages": [
+        {
+          "message_id": "new-27-1",
+          "question": "الهويه مهتريه ومش مبينه، شو بعمل؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-28",
+      "messages": [
+        {
+          "message_id": "new-28-1",
+          "question": "بدي أطلع دفتر لأول مرة، مين بقدر يقدم الطلب؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-29",
+      "messages": [
+        {
+          "message_id": "new-29-1",
+          "question": "شو شروط تجديد دفتر العائلة؟"
+        },
+        {
+          "message_id": "new-29-2",
+          "question": "وقديش بكلف؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-30",
+      "messages": [
+        {
+          "message_id": "new-30-1",
+          "question": "بدي أطلع جواز سفر لأول مرة لابني"
+        },
+        {
+          "message_id": "new-30-2",
+          "question": "عمره 10 سنين، قديش؟"
+        },
+        {
+          "message_id": "new-30-3",
+          "question": "وبقدر أقدمله أنا ولا لازم يجي هو؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-31",
+      "messages": [
+        {
+          "message_id": "new-31-1",
+          "question": "ضاعت هويتي، شو الرسوم؟"
+        },
+        {
+          "message_id": "new-31-2",
+          "question": "وإذا كانت تالفة بدل ما ضاعت؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-32",
+      "messages": [
+        {
+          "message_id": "new-32-1",
+          "question": "مرحبا، أنا عمري 45 وساكن بعمان. جوازي خلص من شهرين، ومرتي ضاع منها دفتر العائلة لأول مرة، وبنتي عمرها 17 بدها هوية لأول مرة. شو الرسوم لكل وحدة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-33",
+      "messages": [
+        {
+          "message_id": "new-33-1",
+          "question": "بقدر أوكل حدا يطلعلي هوية بدل فاقد بدالي، صح؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-34",
+      "messages": [
+        {
+          "message_id": "new-34-1",
+          "question": "الهوية الذكية بتتجدد من السفارة، صح؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-35",
+      "messages": [
+        {
+          "message_id": "new-35-1",
+          "question": "دفتر العائلة بدل فاقد لازم يطلعه الزوج، ما بتقدر الزوجة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-36",
+      "messages": [
+        {
+          "message_id": "new-36-1",
+          "question": "قديش بتكلف المعاملة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-37",
+      "messages": [
+        {
+          "message_id": "new-37-1",
+          "question": "ضاع، شو أعمل؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-38",
+      "messages": [
+        {
+          "message_id": "new-38-1",
+          "question": "كم رسوم إصدار شهادة عدم محكومية؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-39",
+      "messages": [
+        {
+          "message_id": "new-39-1",
+          "question": "بدي أجدد رخصة السواقة، شو بلزمني؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-40",
+      "messages": [
+        {
+          "message_id": "new-40-1",
+          "question": "كم رسوم وثيقة السفر المؤقتة؟"
+        }
+      ]
+    },
+    {
+      "chat_id": "new-41",
+      "messages": [
+        {
+          "message_id": "new-41-1",
+          "question": "شو ساعات الدوام بمكتب الأحوال؟"
+        }
+      ]
+    }
+  ]
+}

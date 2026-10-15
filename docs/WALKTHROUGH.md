@@ -11,6 +11,8 @@
 
 ملاحظات is always included with fee, condition and timing questions, because extra charges and deadlines hide there. Each chat has its own memory, so follow-ups work. A message about several services gets each part answered.
 
+**Hybrid retrieval.** We also use embeddings (`bge-m3`), deliberately in second position. The rules choose the service, because the twin files are too similar for vectors to separate. Inside that service, embeddings rank the fields when the wording doesn't match our keywords. The vectors live in ChromaDB (cosine distance, filtered by service). If ChromaDB isn't available, the same vectors are read from a JSON cache, so the program can never fail because of it.
+
 **3. Fees.** The 7B model kept picking the wrong fee case, so we moved that decision into code. Each fee line is tagged with its condition (age 16, 180 days, abroad, military, nth loss, expired). The code reads the person's situation and sends only the matching line. **The documents give the rules, the code applies them, and the model only writes the sentence.**
 
 **4. Not making things up.**
